@@ -4,12 +4,12 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { generateRoomCode, distributeRoles } = require('./gameLogic');
 const { db } = require('./firebase');
-const { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  deleteDoc, 
+const {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
   onSnapshot,
   arrayUnion
 } = require('firebase/firestore');

@@ -1,9 +1,10 @@
 # Dependencies
 node_modules/
 frontend/node_modules/
-frontend/dist/
+backend/node_modules/
 
 # Build output
+frontend/dist/
 dist/
 
 # Logs
@@ -14,6 +15,8 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+backend/.env
+frontend/.env
 
 # IDE
 .vscode/
