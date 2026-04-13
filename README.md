@@ -112,3 +112,4 @@ node test-game.js
 Полная история изменений и инструкции по откату — в [`version_history.md`](./version_history.md).
 
 Отчёт по автоматизации — в [`automated_mafia_report.md`](./automated_mafia_report.md).
+ 
