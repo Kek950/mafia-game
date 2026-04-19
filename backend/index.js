@@ -1,6 +1,6 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+
 const cors = require('cors');
 const { generateRoomCode, distributeRoles } = require('./gameLogic');
 const { db } = require('./firebase');
@@ -18,10 +18,10 @@ const app = express();
 app.use(cors());
 
 const server = http.createServer(app);
-const io = new Server(server, {
+const io = require('socket.io')(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
+    origin: "https://mafia-game-peach.vercel.app",
+    methods: ["GET", "POST"]
   }
 });
 
