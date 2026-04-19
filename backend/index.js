@@ -4,12 +4,12 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { generateRoomCode, distributeRoles } = require('./gameLogic');
 const { db } = require('./firebase');
-const {
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  deleteDoc,
+const { 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  deleteDoc, 
   onSnapshot,
   arrayUnion
 } = require('firebase/firestore');
@@ -56,7 +56,8 @@ io.on('connection', (socket) => {
       state: 'LOBBY',
       roles: {},
       eliminated: [],
-      votes: {}
+      votes: {},
+      lastActivity: Date.now()
     });
     socketRooms[socket.id] = { roomCode, isHost: true };
     socket.join(roomCode);
@@ -74,27 +75,40 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join_room', async ({ roomCode, playerName }) => {
-    const roomRef = doc(db, 'rooms', roomCode);
-    await updateDoc(roomRef, { players: arrayUnion({ id: socket.id, name: playerName, isHost: false }) });
-    socketRooms[socket.id] = { roomCode, isHost: false };
-    socket.join(roomCode);
-    setupRoomListener(roomCode);
-    socket.emit('room_joined', roomCode);
+    try {
+      const roomRef = doc(db, 'rooms', roomCode);
+      await updateDoc(roomRef, { players: arrayUnion({ id: socket.id, name: playerName, isHost: false }) });
+      socketRooms[socket.id] = { roomCode, isHost: false };
+      socket.join(roomCode);
+      setupRoomListener(roomCode);
+      socket.emit('room_joined', roomCode);
+    } catch (e) {
+      console.error('Error joining room:', e.message);
+      socket.emit('error', 'Room not found or could not be joined');
+    }
   });
 
   socket.on('start_game', async ({ roomCode, numMafia, hasDoctor, hasSheriff }) => {
-    const roomRef = doc(db, 'rooms', roomCode);
-    const roomSnap = await getDoc(roomRef);
-    if (roomSnap.exists()) {
-      const room = roomSnap.data();
-      const roles = distributeRoles(room.players, numMafia, hasDoctor, hasSheriff);
-      await updateDoc(roomRef, { state: 'PLAYING_NIGHT', roles });
+    try {
+      const roomRef = doc(db, 'rooms', roomCode);
+      const roomSnap = await getDoc(roomRef);
+      if (roomSnap.exists()) {
+        const room = roomSnap.data();
+        const roles = distributeRoles(room.players, numMafia, hasDoctor, hasSheriff);
+        await updateDoc(roomRef, { state: 'PLAYING_NIGHT', roles });
+      }
+    } catch (e) {
+      console.error('Error starting game:', e.message);
     }
   });
 
   // HOST-ONLY EVENTS (MANUAL)
   socket.on('start_day_vote', async ({ roomCode }) => {
-    await updateDoc(doc(db, 'rooms', roomCode), { state: 'PLAYING_DAY_VOTE', votes: {} });
+    try {
+      await updateDoc(doc(db, 'rooms', roomCode), { state: 'PLAYING_DAY_VOTE', votes: {} });
+    } catch (e) {
+      console.error('Error starting day vote:', e.message);
+    }
   });
 
   socket.on('end_day_vote', async ({ roomCode }) => {
@@ -113,7 +127,11 @@ io.on('connection', (socket) => {
       const winState = checkWinConditions({ ...room, eliminated });
       const nextState = winState || 'PLAYING_DAY_RESULTS';
 
-      await updateDoc(roomRef, { state: nextState, lastHung: hungId, eliminated });
+      try {
+        await updateDoc(roomRef, { state: nextState, lastHung: hungId, eliminated });
+      } catch (e) {
+        console.error('Error ending day vote:', e.message);
+      }
 
       if (winState) {
         setTimeout(async () => {
@@ -124,7 +142,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('start_night', async ({ roomCode }) => {
-    await updateDoc(doc(db, 'rooms', roomCode), { state: 'PLAYING_NIGHT', votes: {} });
+    try {
+      await updateDoc(doc(db, 'rooms', roomCode), { state: 'PLAYING_NIGHT', votes: {} });
+    } catch (e) {
+      console.error('Error starting night:', e.message);
+    }
   });
 
   socket.on('night_kill', async ({ roomCode, targetId }) => {
@@ -143,7 +165,11 @@ io.on('connection', (socket) => {
         updates.state = winState;
       }
       
-      await updateDoc(roomRef, updates);
+      try {
+        await updateDoc(roomRef, updates);
+      } catch (e) {
+        console.error('Error in night kill:', e.message);
+      }
 
       if (winState) {
         setTimeout(async () => {
@@ -154,12 +180,39 @@ io.on('connection', (socket) => {
   });
 
   socket.on('submit_vote', async ({ roomCode, targetId }) => {
-    const roomRef = doc(db, 'rooms', roomCode);
-    const roomSnap = await getDoc(roomRef);
-    if (roomSnap.exists()) {
-      const votes = { ...(roomSnap.data().votes || {}) };
-      votes[socket.id] = targetId;
-      await updateDoc(roomRef, { votes });
+    try {
+      const roomRef = doc(db, 'rooms', roomCode);
+      const roomSnap = await getDoc(roomRef);
+      if (roomSnap.exists()) {
+        const votes = { ...(roomSnap.data().votes || {}) };
+        votes[socket.id] = targetId;
+        await updateDoc(roomRef, { votes });
+      }
+    } catch (e) {
+      console.error('Error submitting vote:', e.message);
+    }
+  });
+
+  socket.on('ping_activity', async ({ roomCode }) => {
+    try {
+      if (!roomCode) return;
+      const roomRef = doc(db, 'rooms', roomCode);
+      await updateDoc(roomRef, { lastActivity: Date.now() });
+    } catch (e) {
+      console.error('Error updating activity:', e.message);
+    }
+  });
+
+  socket.on('destroy_room', async ({ roomCode }) => {
+    try {
+      const roomRef = doc(db, 'rooms', roomCode);
+      const roomSnap = await getDoc(roomRef);
+      if (roomSnap.exists()) {
+        await deleteDoc(roomRef);
+        io.to(roomCode).emit('host_disconnected');
+      }
+    } catch (e) {
+      console.error('Error destroying room:', e);
     }
   });
 
@@ -175,7 +228,4 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+server.listen(3001, () => {});

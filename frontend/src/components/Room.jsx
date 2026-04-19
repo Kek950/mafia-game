@@ -29,7 +29,7 @@ export default function Room() {
     };
   }, [navigate, code]);
 
-  if (!room) return <div className="glass-card"><h2 className="text-center">Loading Room...</h2></div>;
+  if (!room) return <div className="wanted-poster"><h2 className="text-center">Assembling the Posse...</h2></div>;
 
   const me = room.players.find(p => p.id === socket.id);
   if (!me) return null;
@@ -37,22 +37,23 @@ export default function Room() {
   if (room.state === 'LOBBY') {
     const inviteUrl = `${window.location.origin}/join/${code}`;
     return (
-      <div className="glass-card">
-        <h2 style={{ marginBottom: '1rem' }}>Lobby</h2>
+      <div className="wanted-poster">
+        <h2 style={{ marginBottom: '1rem' }}>TOWN SQUARE</h2>
 
         {me.isHost && (
           <div className="text-center" style={{ marginBottom: '2rem' }}>
             <div style={{ 
               background: '#fff', 
               padding: '1rem', 
-              borderRadius: '16px', 
+              borderRadius: '0', 
               display: 'inline-block',
-              boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
+              border: '4px solid var(--text-dark)',
+              boxShadow: '8px 8px 0px rgba(0,0,0,0.3)',
               marginBottom: '1rem'
             }}>
               <QRCodeSVG value={inviteUrl} size={180} level="H" />
             </div>
-            <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.4rem', fontWeight: 'bold' }}>Scan to Join</h3>
+            <h3 style={{ color: 'var(--text-dark)', margin: 0, fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'Rye' }}>RECRUITMENT CODE</h3>
           </div>
         )}
 
@@ -61,38 +62,39 @@ export default function Room() {
           style={{ cursor: 'pointer', margin: me.isHost ? '0 0 1rem 0' : '1rem 0' }}
           onClick={() => {
              navigator.clipboard.writeText(inviteUrl);
-             alert('Invite link copied to clipboard!');
+             alert('Recruitment link copied to clipboard!');
           }}
           title="Click to copy invite link"
         >
           {code}
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem', letterSpacing: 'normal' }}>
-             {me.isHost ? 'Or click to copy invite link' : 'Room Code'}
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-dark)', marginTop: '0.5rem', letterSpacing: 'normal', fontFamily: 'Special Elite' }}>
+             {me.isHost ? 'Click to copy recruitment link' : 'Secret Frequency'}
           </div>
         </div>
 
         <div className="player-list mt-4">
+          <h3 style={{fontFamily: 'Rye', textAlign: 'center', marginBottom: '1rem'}}>THE POSSE</h3>
           {room.players.map(p => (
             <div key={p.id} className="player-card">
               <span className="player-name">{p.name} {p.id === socket.id && '(You)'}</span>
               <span className={`player-status ${p.isHost ? 'status-host' : 'status-alive'}`}>
-                {p.isHost ? 'Host' : 'Player'}
+                {p.isHost ? 'WARDEN' : 'SUSPECT'}
               </span>
             </div>
           ))}
         </div>
         {me.isHost ? (
           <div className="input-group mt-4">
-            <label>Number of Mafia</label>
+            <label style={{fontFamily: 'Rye'}}>Nmuber of Outlaws</label>
             <input type="number" min="1" max={Math.max(1, room.players.length - 2)} value={numMafia} onChange={e => setNumMafia(Number(e.target.value))} />
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <label><input type="checkbox" checked={hasDoctor} onChange={e => setHasDoctor(e.target.checked)} /> Add Doctor</label>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', fontFamily: 'Special Elite' }}>
+              <label><input type="checkbox" checked={hasDoctor} onChange={e => setHasDoctor(e.target.checked)} /> Add Medic</label>
               <label><input type="checkbox" checked={hasSheriff} onChange={e => setHasSheriff(e.target.checked)} /> Add Sheriff</label>
             </div>
-            <button className="btn mt-4" onClick={() => socket.emit('start_game', { roomCode: code, numMafia, hasDoctor, hasSheriff })}>Start Game</button>
+            <button className="btn mt-4" onClick={() => socket.emit('start_game', { roomCode: code, numMafia, hasDoctor, hasSheriff })}>BEGIN THE DUEL</button>
           </div>
         ) : (
-          <h3 className="mt-4 text-center">Waiting for host to setup game...</h3>
+          <h3 className="mt-4 text-center">Waiting for the Warden to start...</h3>
         )}
       </div>
     );
@@ -115,30 +117,32 @@ export default function Room() {
 
   if (isGameOver) {
     return (
-      <div className="glass-card text-center">
-        <h1>{room.state === 'MAFIA_WIN' ? 'MAFIA WINS! 👺' : 'CITIZENS WIN! 🛡️'}</h1>
-        {me.isHost && <button className="btn mt-8" onClick={() => socket.emit('restart_game', { roomCode: code })}>Start New Game</button>}
+      <div className="wanted-poster text-center">
+        <h1>{room.state === 'MAFIA_WIN' ? 'OUTLAWS WIN! 🤠' : 'TOWN WINS! 🏛️'}</h1>
+        {me.isHost && <button className="btn mt-8" onClick={() => socket.emit('restart_game', { roomCode: code })}>ANOTHER ROUND</button>}
       </div>
     );
   }
 
   return (
-    <div className="glass-card">
-      <h2>{room.state === 'PLAYING_NIGHT' ? 'Night Phase 🌙' : 'Day Phase ☀️'}</h2>
+    <div className="wanted-poster">
+      <h2>{room.state === 'PLAYING_NIGHT' ? 'The Sun Sets... 🌙' : 'High Noon ☀️'}</h2>
 
       {me.isHost ? (
         <div className="text-center mb-4">
-          <h3>Game Master (Host Controlled)</h3>
+          <h3 style={{fontFamily: 'Rye'}}>THE OVERSEER</h3>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            {room.state === 'PLAYING_NIGHT' && <button className="btn" onClick={() => socket.emit('start_day_vote', { roomCode: code })}>☀️ Start Day Voting</button>}
-            {room.state === 'PLAYING_DAY_VOTE' && <button className="btn btn-danger" onClick={() => socket.emit('end_day_vote', { roomCode: code })}>Tally Votes</button>}
-            {room.state === 'PLAYING_DAY_RESULTS' && <button className="btn" onClick={() => socket.emit('start_night', { roomCode: code })}>🌙 Start Night</button>}
+            {room.state === 'PLAYING_NIGHT' && <button className="btn" onClick={() => socket.emit('start_day_vote', { roomCode: code })}>☀️ SUNRISE</button>}
+            {room.state === 'PLAYING_DAY_VOTE' && <button className="btn btn-secondary" onClick={() => socket.emit('end_day_vote', { roomCode: code })}>TALLY BALLOTS</button>}
+            {room.state === 'PLAYING_DAY_RESULTS' && <button className="btn" onClick={() => socket.emit('start_night', { roomCode: code })}>🌙 SUNSET</button>}
           </div>
         </div>
       ) : (
         <div className="text-center">
-          <div className={`role-badge role-${myRole ? myRole.toLowerCase() : 'none'}`}>{myRole || 'Loading Role...'}</div>
-          {amIEliminated && <h3 className="error-message">You have been eliminated</h3>}
+          <div className={`role-badge role-${myRole ? myRole.toLowerCase() : 'none'}`} style={{fontFamily: 'Rye', fontSize: '2rem', border: '4px double var(--text-dark)', padding: '1rem', marginBottom: '1.5rem'}}>
+            {myRole === 'Mafia' ? 'OUTLAW' : myRole === 'Citizen' ? 'TOWNSFOLK' : myRole === 'Doctor' ? 'MEDIC' : myRole === 'Sheriff' ? 'DEPUTY' : myRole}
+          </div>
+          {amIEliminated && <h3 className="error-message" style={{background: 'rgba(139, 0, 0, 0.1)', color: 'var(--accent-red)'}}>YOU ARE PUSHING UP DAISIES</h3>}
         </div>
       )}
 
@@ -154,17 +158,17 @@ export default function Room() {
               key={p.id}
               onClick={() => { if (canPlayerVote) setSelectedVoteTarget(p.id); }}
               className={`player-card ${canPlayerVote ? 'votable' : ''} ${selectedVoteTarget === p.id ? 'voted' : ''}`}
-              style={{ opacity: isEliminated ? 0.5 : 1, cursor: canPlayerVote ? 'pointer' : 'default' }}
+              style={{ opacity: isEliminated ? 0.3 : 1, cursor: canPlayerVote ? 'pointer' : 'default', border: selectedVoteTarget === p.id ? '2px solid var(--accent-red)' : '1px solid var(--text-dark)' }}
             >
               <div className="player-info">
-                <span>{p.name} {p.id === socket.id && '(You)'}</span>
-                {votesForPlayer > 0 && <span className="vote-count">🗳️ {votesForPlayer}</span>}
-                {(isEliminated || me.isHost) && <span className="player-status">{(room.roles || {})[p.id]}</span>}
+                <span style={{fontWeight: 'bold'}}>{p.name} {p.id === socket.id && '(You)'}</span>
+                {votesForPlayer > 0 && <span className="vote-count" style={{background: 'var(--accent-red)', borderRadius: '0'}}>🗳️ {votesForPlayer}</span>}
+                {(isEliminated || me.isHost) && <span className="player-status" style={{fontSize: '0.8rem', textTransform: 'uppercase'}}>{(room.roles || {})[p.id]}</span>}
               </div>
 
               {me.isHost && room.state === 'PLAYING_NIGHT' && !isEliminated && (
-                <button className="btn btn-danger" style={{ width: 'auto' }} onClick={() => socket.emit('night_kill', { roomCode: code, targetId: p.id })}>
-                  Night Kill
+                <button className="btn" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={() => socket.emit('night_kill', { roomCode: code, targetId: p.id })}>
+                  ELIMINATE
                 </button>
               )}
             </div>
@@ -174,13 +178,13 @@ export default function Room() {
 
       {room.state === 'PLAYING_DAY_VOTE' && !me.isHost && !amIEliminated && (
         <div className="text-center mt-4">
-          <p>Votes cast: {totalVotesCast} / {livingVoters}</p>
+          <p style={{fontFamily: 'Special Elite'}}>Ballots cast: {totalVotesCast} / {livingVoters}</p>
           {hasAlreadyVoted ? (
-             <p className="success-message">✓ Your vote has been recorded</p>
+             <p className="success-message" style={{color: 'green'}}>✓ Your ballot is in the box</p>
           ) : (
              <button 
                 className="btn mt-4" 
-                style={{ background: selectedVoteTarget ? 'var(--success-color)' : 'rgba(255,255,255,0.1)', cursor: selectedVoteTarget ? 'pointer' : 'not-allowed' }}
+                style={{ background: selectedVoteTarget ? 'var(--accent-red)' : 'var(--wood-dark)', cursor: selectedVoteTarget ? 'pointer' : 'not-allowed', opacity: selectedVoteTarget ? 1 : 0.6 }}
                 disabled={!selectedVoteTarget}
                 onClick={() => { 
                   if(selectedVoteTarget) {
@@ -190,8 +194,8 @@ export default function Room() {
                 }}
              >
                 {selectedVoteTarget 
-                  ? `Confirm Vote for ${room.players.find(p => p.id === selectedVoteTarget)?.name}` 
-                  : 'Select a player to vote'}
+                  ? `ACCUSE ${room.players.find(p => p.id === selectedVoteTarget)?.name}` 
+                  : 'SELECT A SUSPECT'}
              </button>
           )}
         </div>

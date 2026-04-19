@@ -37,13 +37,14 @@ export default function Home() {
 
   return (
     <div className="landing-container">
-      <div className="glass-card text-center">
-        <h1 className="title-gradient">Mafia Game</h1>
+      <div className="wanted-poster text-center">
+        <h1>THE MAFIA</h1>
+        <h2 style={{marginTop: '-1rem', marginBottom: '2rem'}}>OUTLAWS</h2>
 
         <div className="input-group">
           <input
             type="text"
-            placeholder="Your Name"
+            placeholder="Enter Your Name, Partner"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
           />
@@ -54,7 +55,7 @@ export default function Home() {
             <>
               <div className="create-section">
                 <button className="btn btn-primary" onClick={handleCreateRoom}>
-                  Create New Room
+                  Start a Posse
                 </button>
               </div>
 
@@ -66,13 +67,14 @@ export default function Home() {
             {!inviteCode && (
               <input
                 type="text"
-                placeholder="Room Code"
+                placeholder="Secret Room Code"
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value)}
+                style={{marginBottom: '1rem'}}
               />
             )}
-            <button className="btn" onClick={handleJoinRoom}>
-              {inviteCode ? `Join Room ${inviteCode}` : 'Join Room'}
+            <button className="btn btn-secondary" onClick={handleJoinRoom}>
+              {inviteCode ? `Join the ${inviteCode} Gang` : 'Join a Gang'}
             </button>
           </div>
         </div>
