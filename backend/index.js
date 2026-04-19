@@ -1,29 +1,36 @@
 const express = require('express');
 const http = require('http');
 
+
 const cors = require('cors');
 const { generateRoomCode, distributeRoles } = require('./gameLogic');
 const { db } = require('./firebase');
-const { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  deleteDoc, 
+const {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
   onSnapshot,
   arrayUnion
 } = require('firebase/firestore');
 
 const app = express();
-app.use(cors());
+
+
+app.use(cors({
+  origin: "https://mafia-game-peach.vercel.app"
+}));
 
 const server = http.createServer(app);
-const io = require('socket.io')(server, {
+const io = new Server(server, {
   cors: {
     origin: "https://mafia-game-peach.vercel.app",
     methods: ["GET", "POST"]
   }
 });
+
+
 
 const activeListeners = {};
 const socketRooms = {};
@@ -135,7 +142,7 @@ io.on('connection', (socket) => {
 
       if (winState) {
         setTimeout(async () => {
-          try { await deleteDoc(roomRef); } catch (e) {}
+          try { await deleteDoc(roomRef); } catch (e) { }
         }, 20000);
       }
     }
@@ -159,12 +166,12 @@ io.on('connection', (socket) => {
       if (targetId) eliminated.push(targetId);
 
       const winState = checkWinConditions({ ...room, eliminated });
-      
+
       updates.eliminated = eliminated;
       if (winState) {
         updates.state = winState;
       }
-      
+
       try {
         await updateDoc(roomRef, updates);
       } catch (e) {
@@ -173,7 +180,7 @@ io.on('connection', (socket) => {
 
       if (winState) {
         setTimeout(async () => {
-          try { await deleteDoc(roomRef); } catch (e) {}
+          try { await deleteDoc(roomRef); } catch (e) { }
         }, 20000);
       }
     }
@@ -216,16 +223,16 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', async () => { 
+  socket.on('disconnect', async () => {
     const info = socketRooms[socket.id];
     if (info) {
       if (info.isHost) {
         io.to(info.roomCode).emit('host_disconnected');
-        try { await deleteDoc(doc(db, 'rooms', info.roomCode)); } catch (e) {}
+        try { await deleteDoc(doc(db, 'rooms', info.roomCode)); } catch (e) { }
       }
       delete socketRooms[socket.id];
     }
   });
 });
 
-server.listen(3001, () => {});
+server.listen(3001, () => { });
