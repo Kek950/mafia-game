@@ -18,13 +18,13 @@ const app = express();
 
 
 app.use(cors({
-  origin: "https://mafia-game-peach.vercel.app"
+  origin: ["https://mafia-game-peach.vercel.app", "http://localhost:5173", "http://localhost:3000"]
 }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://mafia-game-peach.vercel.app",
+    origin: ["https://mafia-game-peach.vercel.app", "http://localhost:5173", "http://localhost:3000"],
     methods: ["GET", "POST"]
   }
 });
@@ -199,6 +199,21 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('restart_game', async ({ roomCode }) => {
+    try {
+      const roomRef = doc(db, 'rooms', roomCode);
+      await updateDoc(roomRef, {
+        state: 'LOBBY',
+        roles: {},
+        eliminated: [],
+        votes: {},
+        lastActivity: Date.now()
+      });
+    } catch (e) {
+      console.error('Error restarting game:', e.message);
+    }
+  });
+
   socket.on('ping_activity', async ({ roomCode }) => {
     try {
       if (!roomCode) return;
@@ -208,15 +223,11 @@ io.on('connection', (socket) => {
       console.error('Error updating activity:', e.message);
     }
   });
-
-  socket.on('destroy_room', async ({ roomCode }) => {
     try {
+      console.log(`Destroying room ${roomCode} due to inactivity`);
       const roomRef = doc(db, 'rooms', roomCode);
-      const roomSnap = await getDoc(roomRef);
-      if (roomSnap.exists()) {
-        await deleteDoc(roomRef);
-        io.to(roomCode).emit('host_disconnected');
-      }
+      io.to(roomCode).emit('host_disconnected'); // Notify all users first
+      await deleteDoc(roomRef); // Then delete from Firebase
     } catch (e) {
       console.error('Error destroying room:', e);
     }

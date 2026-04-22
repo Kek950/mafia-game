@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { QRCodeSVG } from 'qrcode.react';
+import SnakeGame from './SnakeGame';
 
 export default function Room() {
   try {
@@ -96,6 +97,13 @@ export default function Room() {
         ) : (
           <h3 className="mt-4 text-center">Waiting for the Warden to start...</h3>
         )}
+
+        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+          <button className="btn btn-secondary" onClick={() => navigate(`/mini-game?room=${code}`)}>
+            🎮 PLAY RATTLESNAKE RUSH
+          </button>
+          <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.8 }}>Wait for the posse by playing a game. You'll be brought back automatically when the duel starts.</p>
+        </div>
       </div>
     );
   }
@@ -119,7 +127,14 @@ export default function Room() {
     return (
       <div className="wanted-poster text-center">
         <h1>{room.state === 'MAFIA_WIN' ? 'OUTLAWS WIN! 🤠' : 'TOWN WINS! 🏛️'}</h1>
-        {me.isHost && <button className="btn mt-8" onClick={() => socket.emit('restart_game', { roomCode: code })}>ANOTHER ROUND</button>}
+        {me.isHost && (
+          <button className="btn mt-8" onClick={() => {
+            socket.emit('restart_game', { roomCode: code });
+            window.location.reload(); // Reset the page to clear local states
+          }}>
+            ANOTHER ROUND
+          </button>
+        )}
       </div>
     );
   }

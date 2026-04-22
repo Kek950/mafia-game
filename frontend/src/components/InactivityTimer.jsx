@@ -45,6 +45,7 @@ export default function InactivityTimer() {
 
     // Set expiration timer
     timerRef.current = setTimeout(() => {
+      console.log(`Timer expired for room ${roomCode}. Sending destroy_room...`);
       if (roomCode) {
         socket.emit('destroy_room', { roomCode });
       }
@@ -86,6 +87,11 @@ export default function InactivityTimer() {
 
     // Log remaining time every 10 seconds
     logIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - lastResetRef.current;
+      const remaining = Math.max(0, INACTIVITY_TIME - elapsed);
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      console.log(`⏳ Time until disbandment: ${minutes}m ${seconds}s`);
     }, 10000);
 
     return () => {
