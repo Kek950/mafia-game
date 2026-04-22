@@ -223,6 +223,7 @@ io.on('connection', (socket) => {
       console.error('Error updating activity:', e.message);
     }
   });
+  socket.on('destroy_room', async ({ roomCode }) => {
     try {
       console.log(`Destroying room ${roomCode} due to inactivity`);
       const roomRef = doc(db, 'rooms', roomCode);
