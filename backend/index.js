@@ -238,8 +238,23 @@ io.on('connection', (socket) => {
     const info = socketRooms[socket.id];
     if (info) {
       if (info.isHost) {
+        console.log(`Host disconnected from room ${info.roomCode}. Disbanding.`);
         io.to(info.roomCode).emit('host_disconnected');
         try { await deleteDoc(doc(db, 'rooms', info.roomCode)); } catch (e) { }
+      } else {
+        // Player disconnected: Remove them from the room's player list in Firestore
+        try {
+          const roomRef = doc(db, 'rooms', info.roomCode);
+          const roomSnap = await getDoc(roomRef);
+          if (roomSnap.exists()) {
+            const roomData = roomSnap.data();
+            const updatedPlayers = roomData.players.filter(p => p.id !== socket.id);
+            await updateDoc(roomRef, { players: updatedPlayers });
+            console.log(`Player ${socket.id} removed from room ${info.roomCode} due to disconnect.`);
+          }
+        } catch (e) {
+          console.error('Error removing player on disconnect:', e.message);
+        }
       }
       delete socketRooms[socket.id];
     }
