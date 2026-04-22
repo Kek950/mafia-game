@@ -17,6 +17,7 @@ export default function SnakeGame() {
   
   const navigate = useNavigate();
   const gameContainerRef = useRef(null);
+  const touchStartRef = useRef({ x: 0, y: 0 });
 
   const getRandomFood = useCallback(() => {
     return {
@@ -32,6 +33,42 @@ export default function SnakeGame() {
     setIsGameOver(false);
     setFood(getRandomFood());
     setIsStarted(true);
+  };
+
+  const handleTouchStart = (e) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
+    };
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!isStarted || isGameOver) return;
+    
+    const touchEnd = {
+      x: e.changedTouches[0].clientX,
+      y: e.changedTouches[0].clientY
+    };
+
+    const dx = touchEnd.x - touchStartRef.current.x;
+    const dy = touchEnd.y - touchStartRef.current.y;
+
+    // Minimum swipe distance to trigger movement
+    const minSwipe = 30;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal swipe
+      if (Math.abs(dx) > minSwipe) {
+        if (dx > 0 && direction.x === 0) setDirection({ x: 1, y: 0 });
+        else if (dx < 0 && direction.x === 0) setDirection({ x: -1, y: 0 });
+      }
+    } else {
+      // Vertical swipe
+      if (Math.abs(dy) > minSwipe) {
+        if (dy > 0 && direction.y === 0) setDirection({ x: 0, y: 1 });
+        else if (dy < 0 && direction.y === 0) setDirection({ x: 0, y: -1 });
+      }
+    }
   };
 
   useEffect(() => {
@@ -111,19 +148,25 @@ export default function SnakeGame() {
   }, [navigate]);
 
   return (
-    <div className="landing-container" style={{ 
-      height: '100vh', 
-      width: '100vw', 
-      overflow: 'hidden', 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      background: 'var(--bg-color)',
-      backgroundImage: 'linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("https://www.transparenttextures.com/patterns/dark-wood.png")'
-    }}>
+    <div 
+      className="landing-container" 
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={{ 
+        height: '100vh', 
+        width: '100vw', 
+        overflow: 'hidden', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        background: 'var(--bg-color)',
+        backgroundImage: 'linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("https://www.transparenttextures.com/patterns/dark-wood.png")',
+        touchAction: 'none' // Critical: stops the page from bouncing/scrolling during swipes
+      }}
+    >
       <div className="wanted-poster" style={{ 
         padding: '2.5rem', 
         transform: 'none', 
