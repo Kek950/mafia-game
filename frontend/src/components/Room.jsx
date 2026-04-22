@@ -24,9 +24,12 @@ export default function Room() {
     socket.on('room_update', onRoomUpdate);
     socket.on('host_disconnected', onHostDisconnected);
     socket.emit('get_room', { roomCode: code });
+    
+    // Cleanup: when component unmounts (player leaves), disconnect socket
     return () => { 
       socket.off('room_update', onRoomUpdate); 
       socket.off('host_disconnected', onHostDisconnected);
+      socket.disconnect(); // This triggers the server-side removal logic
     };
   }, [navigate, code]);
 
