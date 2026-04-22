@@ -168,16 +168,24 @@ export default function SnakeGame() {
       }}
     >
       <div className="wanted-poster" style={{ 
-        padding: '2.5rem', 
+        padding: 'min(2rem, 5vw)', 
         transform: 'none', 
-        width: '90%',
-        maxWidth: '450px',
+        width: 'min(450px, 90%)',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center'
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center'
       }}>
-        <h3 style={{ fontFamily: 'Rye', color: 'var(--accent-red)', textAlign: 'center', fontSize: '2.2rem', marginBottom: '0.5rem' }}>🐍 RATTLESNAKE RUSH</h3>
-        <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem', textAlign: 'center', fontFamily: 'Special Elite' }}>Don't get bit while the posse assembles!</p>
+        <h3 className="snake-title" style={{ 
+          fontFamily: 'Rye', 
+          color: 'var(--accent-red)', 
+          lineHeight: '1.2'
+        }}>🐍 RATTLESNAKE RUSH</h3>
+        <p className="snake-subtitle" style={{ 
+          marginBottom: '1.5rem', 
+          fontFamily: 'Special Elite' 
+        }}>Don't get bit while the posse assembles!</p>
         
         {!isStarted ? (
           <button className="btn" style={{ maxWidth: '300px' }} onClick={resetGame}>START MINI-GAME</button>

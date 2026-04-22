@@ -166,6 +166,38 @@ input[type="text"]:focus {
   margin-bottom: 1rem;
 }
 
+/* Mobile Responsive Adjustments */
+@media (max-width: 600px) {
+  .snake-title { font-size: 1.5rem !important; margin-bottom: 0.2rem !important; }
+  .snake-subtitle { font-size: 0.7rem !important; margin-bottom: 0.8rem !important; }
+  
+  .wanted-poster { padding: 1.5rem 1rem !important; }
+  .wanted-poster::before { font-size: 2.2rem !important; margin-bottom: 1rem !important; }
+  
+  h1 { font-size: 1.8rem !important; }
+  h2 { font-size: 1.4rem !important; }
+  
+  .btn { 
+    padding: 0.6rem 1rem !important; 
+    font-size: 0.9rem !important; 
+    box-shadow: 2px 2px 0px #000 !important;
+  }
+  
+  .btn:hover {
+    box-shadow: 3px 3px 0px #000 !important;
+  }
+
+  input[type="text"], input[type="number"] {
+    padding: 0.7rem !important;
+    font-size: 1rem !important;
+  }
+
+  .room-code-display {
+    font-size: 1.8rem !important;
+    padding: 0.8rem !important;
+  }
+}
+
 .player-card {
   background: rgba(0, 0, 0, 0.08);
   border: 1px solid var(--text-dark);
