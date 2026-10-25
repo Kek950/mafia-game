@@ -1,9 +1,12 @@
 import { io } from 'socket.io-client';
 
-// Automatically detect host IP if running across devices on LAN or online
+// Automatically detect backend URL across local dev, LAN, or cloud deployments
 const getBackendUrl = () => {
     if (import.meta.env.VITE_BACKEND_URL) {
         return import.meta.env.VITE_BACKEND_URL;
+    }
+    if (typeof window !== 'undefined' && window.location.port !== '5173' && window.location.origin) {
+        return window.location.origin;
     }
     if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost') {
         return `${window.location.protocol}//${window.location.hostname}:3001`;

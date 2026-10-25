@@ -21,6 +21,13 @@ app.use(cors({
   credentials: true
 }));
 
+const path = require('path');
+const fs = require('fs');
+const distPath = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+}
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -1163,6 +1170,13 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+// SPA fallback for React Router in production
+if (fs.existsSync(distPath)) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {

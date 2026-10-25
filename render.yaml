@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: mafia-game-backend
+    name: mafia-game
     env: node
     region: frankfurt
-    buildCommand: cd backend && npm install
+    buildCommand: cd frontend && npm install && npm run build && cd ../backend && npm install
     startCommand: cd backend && node index.js
     envVars:
       - key: NODE_ENV
