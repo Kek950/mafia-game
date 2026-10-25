@@ -2,43 +2,72 @@ function generateRoomCode() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-function distributeRoles(players, numMafia, hasDoctor, hasSheriff) {
-  const allPlayers = players.filter(p => !p.isHost);
+// Generate a random reasonable adult age (21 to 65)
+function generateRandomAge() {
+  return Math.floor(21 + Math.random() * 45);
+}
 
-  // Cap the number of special roles to the number of available people
-  let availableSpots = allPlayers.length;
-
-  if (numMafia > availableSpots) numMafia = availableSpots;
-  availableSpots -= numMafia;
-
-  let docs = hasDoctor && availableSpots > 0 ? 1 : 0;
-  availableSpots -= docs;
-
-  let sheriffs = hasSheriff && availableSpots > 0 ? 1 : 0;
-
-  // Create an array of roles exactly matching the number of allPlayers
-  const roleArray = [];
-  for (let i = 0; i < numMafia; i++) roleArray.push('Mafia');
-  for (let i = 0; i < docs; i++) roleArray.push('Doctor');
-  for (let i = 0; i < sheriffs; i++) roleArray.push('Sheriff');
-
-  // Fill the rest with Citizens
-  while (roleArray.length < allPlayers.length) {
-    roleArray.push('Citizen');
+// Cryptographically uniform Fisher-Yates array shuffle
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
+  return arr;
+}
 
-  // Shuffle roles and assign
-  const shuffledRoles = roleArray.sort(() => 0.5 - Math.random());
+function distributeRoles(players, numMafia, hasDoctor, hasSheriff, hostPlays = true) {
+  // If hostPlays is false, exclude host from role distribution
+  const eligiblePlayers = hostPlays ? [...players] : players.filter(p => !p.isHost);
 
-  const roles = {};
-  allPlayers.forEach((p, index) => {
-    roles[p.id] = shuffledRoles[index];
+  // Ensure every player has a reasonable age
+  eligiblePlayers.forEach(p => {
+    if (!p.age) {
+      p.age = generateRandomAge();
+    }
   });
 
-  return roles;
+  const total = eligiblePlayers.length;
+  let mafiaCount = Math.max(1, Math.min(numMafia, total - 1));
+  let available = total - mafiaCount;
+
+  let docCount = hasDoctor && available > 0 ? 1 : 0;
+  available -= docCount;
+
+  let sheriffCount = hasSheriff && available > 0 ? 1 : 0;
+  available -= sheriffCount;
+
+  // Build role deck:
+  // 1 Don (the Mafia Boss) + remaining Mafia
+  const roleDeck = [];
+  if (mafiaCount >= 1) {
+    roleDeck.push('Don');
+    for (let i = 1; i < mafiaCount; i++) {
+      roleDeck.push('Mafia');
+    }
+  }
+
+  if (docCount > 0) roleDeck.push('Doctor');
+  if (sheriffCount > 0) roleDeck.push('Sheriff');
+
+  while (roleDeck.length < total) {
+    roleDeck.push('Citizen');
+  }
+
+  const shuffledRoles = shuffleArray(roleDeck);
+
+  const roles = {};
+  eligiblePlayers.forEach((p, idx) => {
+    roles[p.id] = shuffledRoles[idx];
+  });
+
+  return { roles, players: eligiblePlayers };
 }
 
 module.exports = {
   generateRoomCode,
-  distributeRoles
+  generateRandomAge,
+  distributeRoles,
+  shuffleArray
 };

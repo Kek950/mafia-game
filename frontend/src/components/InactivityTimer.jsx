@@ -45,12 +45,9 @@ export default function InactivityTimer() {
 
     // Set expiration timer
     timerRef.current = setTimeout(() => {
-      console.log(`Timer expired for room ${roomCode}. Sending destroy_room...`);
-      if (roomCode) {
-        socket.emit('destroy_room', { roomCode });
-      }
+      console.log(`Client idle timer expired for room ${roomCode}. Leaving room...`);
       navigate('/');
-      alert("This town wasn't big enough for your silence. Room disbanded due to inactivity.");
+      alert("This town wasn't big enough for your silence. You were returned to town due to inactivity.");
     }, timeUntilDisband);
   };
 

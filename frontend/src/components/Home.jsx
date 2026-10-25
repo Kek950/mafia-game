@@ -37,15 +37,19 @@ export default function Home() {
   const handleCreateRoom = () => {
     if (!playerName.trim()) return alert('Please enter your name');
     setIsLoading(true);
+    sessionStorage.setItem('mafia_player_name', playerName.trim());
+    sessionStorage.setItem('mafia_is_host', 'true');
     console.log('Sending create_room request...');
-    socket.emit('create_room', { playerName });
+    socket.emit('create_room', { playerName: playerName.trim() });
   };
 
   const handleJoinRoom = () => {
     if (!playerName.trim() || !roomCode.trim()) return alert('Please enter name and room code');
     setIsLoading(true);
-    console.log('Sending join_room request for code:', roomCode);
-    socket.emit('join_room', { roomCode, playerName });
+    sessionStorage.setItem('mafia_player_name', playerName.trim());
+    sessionStorage.setItem('mafia_is_host', 'false');
+    console.log('Sending join_room request for code:', roomCode.trim());
+    socket.emit('join_room', { roomCode: roomCode.trim(), playerName: playerName.trim() });
   };
 
   return (
