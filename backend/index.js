@@ -1173,7 +1173,7 @@ io.on('connection', (socket) => {
 
 // SPA fallback for React Router in production
 if (fs.existsSync(distPath)) {
-  app.get('*', (req, res) => {
+  app.use((req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
