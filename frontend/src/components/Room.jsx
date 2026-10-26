@@ -172,10 +172,10 @@ export default function Room() {
       const srvParam = typeof window !== 'undefined' && window.location.hostname.includes('trycloudflare.com')
         ? `?srv=${window.location.hostname}`
         : (typeof window !== 'undefined' && sessionStorage.getItem('mafia_backend_srv') ? `?srv=${sessionStorage.getItem('mafia_backend_srv')}` : '');
-      const inviteBase = (typeof window !== 'undefined' && window.location.origin.includes('mafia-game-peach.vercel.app'))
-        ? window.location.origin
-        : 'https://mafia-game-peach.vercel.app';
-      const inviteUrl = `${inviteBase}/join/${code}${srvParam}`;
+      const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://kek950.github.io';
+      const rawBase = import.meta.env.BASE_URL || '/';
+      const baseClean = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
+      const inviteUrl = `${origin}${baseClean}/join/${code}${srvParam}`;
       const maxMafiaAllowed = Math.max(1, Math.floor((room.players.length - 1) / 2));
 
       return (

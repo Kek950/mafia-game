@@ -28,6 +28,10 @@ app.use(cors({
   credentials: true
 }));
 
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', online: true, activeRooms: Object.keys(roomsStore).length, time: new Date().toISOString() });
+});
+
 const path = require('path');
 const fs = require('fs');
 const distPath = path.join(__dirname, '../frontend/dist');
