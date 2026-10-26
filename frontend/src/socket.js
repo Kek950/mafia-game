@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 
 // Live cloud backend tunnel for public hosting platforms without persistent WebSockets
-const DEFAULT_CLOUD_BACKEND = 'https://jurisdiction-tasks-eastern-ordinance.trycloudflare.com';
+const DEFAULT_CLOUD_BACKEND = 'https://telling-soviet-schedules-shoppers.trycloudflare.com';
 
 // Automatically detect backend URL across local dev, LAN, Vercel, GitHub Pages, or cloud deployments
 const getBackendUrl = () => {

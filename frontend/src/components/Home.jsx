@@ -10,6 +10,12 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (inviteCode) {
+      setRoomCode(inviteCode);
+    }
+  }, [inviteCode]);
+
+  useEffect(() => {
     socket.connect();
 
     socket.on('room_created', (code) => {
@@ -27,9 +33,9 @@ export default function Home() {
       alert(typeof err === 'string' ? err : (err?.message || 'Failed to enter the room.'));
     });
 
-    socket.on('connect_error', () => {
+    socket.on('connect_error', (err) => {
       setIsLoading(false);
-      alert('The telegraph lines are down! (Server connection failed)');
+      console.warn('Telegraph line noise:', err?.message || err);
     });
 
     return () => {
@@ -41,21 +47,49 @@ export default function Home() {
   }, [navigate]);
 
   const handleCreateRoom = () => {
-    if (!playerName.trim()) return alert('Please enter your name');
+    if (!playerName.trim()) return alert('Please enter your name, Partner');
+    if (!socket.connected) {
+      socket.connect();
+    }
     setIsLoading(true);
     sessionStorage.setItem('mafia_player_name', playerName.trim());
     sessionStorage.setItem('mafia_is_host', 'true');
     console.log('Sending create_room request...');
     socket.emit('create_room', { playerName: playerName.trim() });
+
+    setTimeout(() => {
+      setIsLoading((prev) => {
+        if (prev) {
+          alert('Could not establish contact with the telegraph office. Please check your connection and try again.');
+          return false;
+        }
+        return false;
+      });
+    }, 12000);
   };
 
   const handleJoinRoom = () => {
-    if (!playerName.trim() || !roomCode.trim()) return alert('Please enter name and room code');
+    const code = (inviteCode || roomCode || '').trim();
+    if (!playerName.trim()) return alert('Please enter your name, Partner');
+    if (!code) return alert('Please enter a secret room code');
+    if (!socket.connected) {
+      socket.connect();
+    }
     setIsLoading(true);
     sessionStorage.setItem('mafia_player_name', playerName.trim());
     sessionStorage.setItem('mafia_is_host', 'false');
-    console.log('Sending join_room request for code:', roomCode.trim());
-    socket.emit('join_room', { roomCode: roomCode.trim(), playerName: playerName.trim() });
+    console.log('Sending join_room request for code:', code);
+    socket.emit('join_room', { roomCode: code, playerName: playerName.trim() });
+
+    setTimeout(() => {
+      setIsLoading((prev) => {
+        if (prev) {
+          alert('The telegraph station did not respond. Please make sure the room exists and try again.');
+          return false;
+        }
+        return false;
+      });
+    }, 12000);
   };
 
   return (
