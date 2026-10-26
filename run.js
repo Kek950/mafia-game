@@ -54,6 +54,31 @@ console.log('==================================================\n');
 const backend = runCommand('node', ['index.js'], backendDir, 'Backend');
 const frontend = runCommand('npm', ['run', 'dev'], frontendDir, 'Frontend');
 
+// Launch Cloudflare Tunnel for worldwide online play
+const tunnel = spawn('npx', ['--yes', 'cloudflared', 'tunnel', '--url', 'http://127.0.0.1:3001'], {
+    shell: true,
+    stdio: ['ignore', 'pipe', 'pipe']
+});
+
+let publicTunnelUrl = null;
+const handleTunnelOutput = (data) => {
+    const text = data.toString();
+    const match = text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/i);
+    if (match && !publicTunnelUrl) {
+        publicTunnelUrl = match[0];
+        const cleanHost = publicTunnelUrl.replace(/^https?:\/\//, '');
+        console.log('\n==================================================');
+        console.log('🌎 WORLDWIDE ONLINE MULTIPLAYER URL:');
+        console.log(`   https://kek950.github.io/mafia-game/?srv=${cleanHost}`);
+        console.log('-> Share this link with friends anywhere in the world');
+        console.log('   to play online together from their phones or laptops!');
+        console.log('==================================================\n');
+    }
+};
+
+tunnel.stdout.on('data', handleTunnelOutput);
+tunnel.stderr.on('data', handleTunnelOutput);
+
 function killProcessTree(proc) {
     if (!proc || !proc.pid) return;
     if (process.platform === 'win32') {
@@ -70,11 +95,13 @@ process.on('SIGINT', () => {
     console.log('\n[MAFIA] Disbanding posse and stopping all servers...');
     killProcessTree(backend);
     killProcessTree(frontend);
+    killProcessTree(tunnel);
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
     killProcessTree(backend);
     killProcessTree(frontend);
+    killProcessTree(tunnel);
     process.exit(0);
 });
