@@ -22,6 +22,11 @@ export default function Home() {
       navigate(`/room/${code}`);
     });
 
+    socket.on('error', (err) => {
+      setIsLoading(false);
+      alert(typeof err === 'string' ? err : (err?.message || 'Failed to enter the room.'));
+    });
+
     socket.on('connect_error', () => {
       setIsLoading(false);
       alert('The telegraph lines are down! (Server connection failed)');
@@ -30,6 +35,7 @@ export default function Home() {
     return () => {
       socket.off('room_created');
       socket.off('room_joined');
+      socket.off('error');
       socket.off('connect_error');
     };
   }, [navigate]);
@@ -73,6 +79,11 @@ export default function Home() {
             placeholder="Enter Your Name, Partner"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                inviteCode ? handleJoinRoom() : handleCreateRoom();
+              }
+            }}
           />
         </div>
 
