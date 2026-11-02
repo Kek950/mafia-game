@@ -73,6 +73,30 @@ const handleTunnelOutput = (data) => {
         console.log('-> Share this link with friends anywhere in the world');
         console.log('   to play online together from their phones or laptops!');
         console.log('==================================================\n');
+
+        // Automatically notify backend of active tunnel URL
+        const http = require('http');
+        const postData = JSON.stringify({ tunnelUrl: publicTunnelUrl });
+        const postToBackend = () => {
+            const req = http.request({
+                hostname: '127.0.0.1',
+                port: 3001,
+                path: '/api/register-tunnel',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(postData)
+                }
+            }, (res) => {
+                console.log(`[Tunnel] Active tunnel registered with backend: HTTP ${res.statusCode}`);
+            });
+            req.on('error', () => {
+                setTimeout(postToBackend, 2000);
+            });
+            req.write(postData);
+            req.end();
+        };
+        postToBackend();
     }
 };
 

@@ -19,6 +19,15 @@ export default function Room() {
     const [numMafia, setNumMafia] = useState(1);
     const [hasDoctor, setHasDoctor] = useState(true);
     const [hasSheriff, setHasSheriff] = useState(true);
+    const [networkInfo, setNetworkInfo] = useState(null);
+    const [inviteMode, setInviteMode] = useState('auto'); // 'auto' | 'tunnel' | 'lan' | 'local'
+    const [joinNameInput, setJoinNameInput] = useState(() => {
+      try {
+        return sessionStorage.getItem('mafia_player_name') || localStorage.getItem('mafia_player_name') || '';
+      } catch (_) {
+        return '';
+      }
+    });
 
     // Gameplay interactive state
     const [selectedVoteTarget, setSelectedVoteTarget] = useState(null);
@@ -59,16 +68,28 @@ export default function Room() {
         }
       };
 
+      const onNetworkInfo = (info) => {
+        setNetworkInfo(info);
+      };
+
+      const onError = (errMsg) => {
+        alert(typeof errMsg === 'string' ? errMsg : (errMsg?.message || 'Saloon frequency closed or not found.'));
+        navigate('/');
+      };
+
       socket.on('room_update', onRoomUpdate);
       socket.on('host_disconnected', onHostDisconnected);
       socket.on('sheriff_result', onSheriffResult);
       socket.on('doctor_confirmed', onDoctorConfirmed);
       socket.on('mafia_nomination_update', onMafiaNominationUpdate);
+      socket.on('network_info', onNetworkInfo);
+      socket.on('error', onError);
 
-      const savedName = sessionStorage.getItem('mafia_player_name');
+      const savedName = sessionStorage.getItem('mafia_player_name') || localStorage.getItem('mafia_player_name');
       const isHost = sessionStorage.getItem('mafia_is_host') === 'true';
 
       socket.emit('get_room', { roomCode: code, playerName: savedName, isHost });
+      socket.emit('get_network_info');
 
       return () => {
         socket.off('room_update', onRoomUpdate);
@@ -76,6 +97,8 @@ export default function Room() {
         socket.off('sheriff_result', onSheriffResult);
         socket.off('doctor_confirmed', onDoctorConfirmed);
         socket.off('mafia_nomination_update', onMafiaNominationUpdate);
+        socket.off('network_info', onNetworkInfo);
+        socket.off('error', onError);
       };
     }, [navigate, code]);
 
@@ -117,20 +140,48 @@ export default function Room() {
       );
     }
 
-    const me = room.players.find(p => p.id === socket.id);
+    const me = (room.players || []).find(p => p.id === socket.id);
     if (!me) {
-      const savedName = sessionStorage.getItem('mafia_player_name') || 'Partner';
-      const isHost = sessionStorage.getItem('mafia_is_host') === 'true';
+      const storedName = (
+        (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('mafia_player_name')) ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('mafia_player_name')) ||
+        ''
+      ).trim();
+
+      const handleJoinSaloon = () => {
+        const chosen = (joinNameInput || storedName).trim();
+        if (!chosen) return alert('Enter your name, Partner');
+        try {
+          sessionStorage.setItem('mafia_player_name', chosen);
+          sessionStorage.setItem('mafia_is_host', 'false');
+          localStorage.setItem('mafia_player_name', chosen);
+        } catch (_) {}
+        socket.emit('join_room', { roomCode: code, playerName: chosen });
+        socket.emit('get_room', { roomCode: code, playerName: chosen, isHost: false });
+      };
+
       return (
-        <div className="wanted-poster text-center">
-          <h2>IDENTIFYING SUSPECT...</h2>
-          <p style={{ marginTop: '1rem', fontStyle: 'italic' }}>Reconnecting to the frontier frequency...</p>
-          <button
-            className="btn mt-4"
-            onClick={() => socket.emit('get_room', { roomCode: code, playerName: savedName, isHost })}
-          >
-            ENTER TOWN SQUARE
-          </button>
+        <div className="landing-container">
+          <div className="wanted-poster text-center">
+            <h2>SALOON ENTRANCE</h2>
+            <p style={{ marginTop: '0.8rem', fontStyle: 'italic' }}>
+              You have arrived at Room #{code}, but haven't introduced yourself to the sheriff.
+            </p>
+            <div className="input-group" style={{ margin: '1.2rem 0' }}>
+              <input
+                type="text"
+                placeholder="Enter Your Name, Partner"
+                value={joinNameInput}
+                onChange={(e) => setJoinNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleJoinSaloon();
+                }}
+              />
+            </div>
+            <button className="btn btn-secondary" onClick={handleJoinSaloon}>
+              ENTER TOWN SQUARE
+            </button>
+          </div>
         </div>
       );
     }
@@ -169,13 +220,31 @@ export default function Room() {
     // RENDER: LOBBY
     // ==========================================
     if (room.state === 'LOBBY') {
-      const srvParam = typeof window !== 'undefined' && window.location.hostname.includes('trycloudflare.com')
-        ? `?srv=${window.location.hostname}`
-        : (typeof window !== 'undefined' && sessionStorage.getItem('mafia_backend_srv') ? `?srv=${sessionStorage.getItem('mafia_backend_srv')}` : '');
       const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://kek950.github.io';
       const rawBase = import.meta.env.BASE_URL || '/';
       const baseClean = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
-      const inviteUrl = `${origin}${baseClean}/join/${code}${srvParam}`;
+      const tunnelHost = networkInfo?.activeTunnel || (typeof window !== 'undefined' && window.location.hostname.includes('trycloudflare.com') ? window.location.hostname : (sessionStorage.getItem('mafia_backend_srv') || localStorage.getItem('mafia_backend_srv') || ''));
+      const lanIp = networkInfo?.localIps?.[0] || '';
+
+      let inviteUrl = `${origin}${baseClean}/join/${code}`;
+      if (inviteMode === 'tunnel' && tunnelHost) {
+        inviteUrl = `https://kek950.github.io/mafia-game/join/${code}?srv=${tunnelHost.replace(/^https?:\/\//, '')}`;
+      } else if (inviteMode === 'lan' && lanIp) {
+        inviteUrl = `http://${lanIp}:5173${baseClean}/join/${code}?srv=${lanIp}:3001`;
+      } else if (inviteMode === 'local') {
+        inviteUrl = `http://localhost:5173${baseClean}/join/${code}`;
+      } else {
+        // Auto mode
+        if (tunnelHost) {
+          inviteUrl = `https://kek950.github.io/mafia-game/join/${code}?srv=${tunnelHost.replace(/^https?:\/\//, '')}`;
+        } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+          inviteUrl = `${origin}${baseClean}/join/${code}`;
+        } else if (lanIp) {
+          inviteUrl = `http://${lanIp}:5173${baseClean}/join/${code}?srv=${lanIp}:3001`;
+        } else {
+          inviteUrl = `${origin}${baseClean}/join/${code}`;
+        }
+      }
       const maxMafiaAllowed = Math.max(1, Math.floor((room.players.length - 1) / 2));
 
       return (
@@ -185,6 +254,72 @@ export default function Room() {
 
             {me.isHost && (
               <div className="text-center" style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', marginBottom: '0.8rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setInviteMode('auto')}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '0.75rem',
+                      fontFamily: 'Special Elite',
+                      cursor: 'pointer',
+                      background: inviteMode === 'auto' ? 'var(--text-dark)' : '#f3e6ce',
+                      color: inviteMode === 'auto' ? '#fff' : 'var(--text-dark)',
+                      border: '2px solid var(--text-dark)'
+                    }}
+                  >
+                    ⚡ Auto Link
+                  </button>
+                  {tunnelHost && (
+                    <button
+                      type="button"
+                      onClick={() => setInviteMode('tunnel')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontFamily: 'Special Elite',
+                        cursor: 'pointer',
+                        background: inviteMode === 'tunnel' ? 'var(--text-dark)' : '#f3e6ce',
+                        color: inviteMode === 'tunnel' ? '#fff' : 'var(--text-dark)',
+                        border: '2px solid var(--text-dark)'
+                      }}
+                    >
+                      🌎 Worldwide
+                    </button>
+                  )}
+                  {lanIp && (
+                    <button
+                      type="button"
+                      onClick={() => setInviteMode('lan')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontFamily: 'Special Elite',
+                        cursor: 'pointer',
+                        background: inviteMode === 'lan' ? 'var(--text-dark)' : '#f3e6ce',
+                        color: inviteMode === 'lan' ? '#fff' : 'var(--text-dark)',
+                        border: '2px solid var(--text-dark)'
+                      }}
+                    >
+                      📶 Wi-Fi / Phone
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setInviteMode('local')}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '0.75rem',
+                      fontFamily: 'Special Elite',
+                      cursor: 'pointer',
+                      background: inviteMode === 'local' ? 'var(--text-dark)' : '#f3e6ce',
+                      color: inviteMode === 'local' ? '#fff' : 'var(--text-dark)',
+                      border: '2px solid var(--text-dark)'
+                    }}
+                  >
+                    💻 Local PC
+                  </button>
+                </div>
                 <div style={{
                   background: '#fff',
                   padding: '1rem',

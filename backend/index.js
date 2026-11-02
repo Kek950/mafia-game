@@ -53,8 +53,45 @@ const roomMessages = {};
 const roomsStore = {};
 const chatRateLimits = {};
 const hostDisconnectTimers = {};
+const playerDisconnectTimers = {};
 const dayTimers = {};
 const nightTimers = {};
+
+const os = require('os');
+let activeTunnelHost = null;
+
+function getLocalIpAddresses() {
+  const interfaces = os.networkInterfaces();
+  const addresses = [];
+  for (const name of Object.keys(interfaces)) {
+    for (const net of interfaces[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        addresses.push(net.address);
+      }
+    }
+  }
+  return addresses;
+}
+
+app.use(express.json());
+
+app.post('/api/register-tunnel', (req, res) => {
+  const { tunnelUrl } = req.body || {};
+  if (tunnelUrl) {
+    activeTunnelHost = tunnelUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    console.log(`[TUNNEL] Active tunnel registered: ${activeTunnelHost}`);
+    io.emit('tunnel_updated', { tunnelHost: activeTunnelHost });
+  }
+  res.json({ ok: true, tunnelHost: activeTunnelHost });
+});
+
+app.get('/api/network-info', (req, res) => {
+  res.json({
+    localIps: getLocalIpAddresses(),
+    tunnelHost: activeTunnelHost,
+    port: process.env.PORT || 3001
+  });
+});
 
 // Helper: Sanitize player names
 function sanitizeName(name) {
@@ -586,6 +623,14 @@ io.on('connection', (socket) => {
     sendSystemMessage(roomCode, `🤠 Posse assembled by Warden ${cleanName}. Welcome to town!`);
   });
 
+  socket.on('get_network_info', () => {
+    socket.emit('network_info', {
+      localIps: getLocalIpAddresses(),
+      tunnelHost: activeTunnelHost,
+      port: process.env.PORT || 3001
+    });
+  });
+
   socket.on('get_room', async ({ roomCode, playerName, isHost }) => {
     if (!roomCode || typeof roomCode !== 'string') return;
     socket.join(roomCode);
@@ -597,6 +642,14 @@ io.on('connection', (socket) => {
         clearTimeout(hostDisconnectTimers[roomCode]);
         delete hostDisconnectTimers[roomCode];
       }
+
+      // Cancel any pending player disconnect timer for this room
+      Object.keys(playerDisconnectTimers).forEach(key => {
+        if (key.startsWith(`${roomCode}_`)) {
+          clearTimeout(playerDisconnectTimers[key]);
+          delete playerDisconnectTimers[key];
+        }
+      });
 
       let player = (room.players || []).find(p => p.id === socket.id);
       if (!player && playerName) {
@@ -626,6 +679,15 @@ io.on('connection', (socket) => {
             }
             socketRooms[socket.id] = { roomCode, isHost: false };
             await updateRoomData(roomCode, { players: updatedPlayers, roles: updatedRoles });
+          } else if (room.state === 'LOBBY') {
+            // Automatically add new player to room if visiting in LOBBY state
+            const updatedPlayers = [...(room.players || [])];
+            if (!updatedPlayers.some(p => p.id === socket.id)) {
+              updatedPlayers.push({ id: socket.id, name: cleanName, isHost: false, age: generateRandomAge() });
+              socketRooms[socket.id] = { roomCode, isHost: false };
+              await updateRoomData(roomCode, { players: updatedPlayers, lastActivity: Date.now() });
+              sendSystemMessage(roomCode, `🤠 ${cleanName} rode into town and joined the posse.`);
+            }
           }
         }
       } else if (player) {
@@ -1166,15 +1228,34 @@ io.on('connection', (socket) => {
           const room = await getRoomData(info.roomCode);
           if (room && room.state === 'LOBBY') {
             const leavingPlayer = (room.players || []).find(p => p.id === socket.id);
-            const updatedPlayers = (room.players || []).filter(p => p.id !== socket.id);
-            await updateRoomData(info.roomCode, { players: updatedPlayers });
-            console.log(`Player ${socket.id} removed from room ${info.roomCode} due to disconnect.`);
             if (leavingPlayer) {
-              sendSystemMessage(info.roomCode, `💨 ${leavingPlayer.name} has left the town.`);
+              const timerKey = `${info.roomCode}_${socket.id}`;
+              console.log(`[PLAYER DISCONNECT] Player ${leavingPlayer.name} (${socket.id}) disconnected from room ${info.roomCode}. Starting 15s grace period...`);
+              if (playerDisconnectTimers[timerKey]) {
+                clearTimeout(playerDisconnectTimers[timerKey]);
+              }
+              playerDisconnectTimers[timerKey] = setTimeout(async () => {
+                delete playerDisconnectTimers[timerKey];
+                try {
+                  const currentRoom = await getRoomData(info.roomCode);
+                  if (currentRoom && currentRoom.state === 'LOBBY') {
+                    const stillThere = (currentRoom.players || []).find(p => p.id === socket.id);
+                    if (stillThere) {
+                      const updatedPlayers = (currentRoom.players || []).filter(p => p.id !== socket.id);
+                      await updateRoomData(info.roomCode, { players: updatedPlayers });
+                      console.log(`Player ${stillThere.name} (${socket.id}) removed from room ${info.roomCode} after grace period.`);
+                      sendSystemMessage(info.roomCode, `💨 ${stillThere.name} has left the town.`);
+                      emitSanitizedRoomUpdate(info.roomCode);
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error removing player after grace period:', err.message);
+                }
+              }, 15000);
             }
           }
         } catch (e) {
-          console.error('Error removing player on disconnect:', e.message);
+          console.error('Error handling player disconnect:', e.message);
         }
       }
       delete socketRooms[socket.id];
